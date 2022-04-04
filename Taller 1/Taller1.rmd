@@ -1,0 +1,389 @@
+---
+title: "Taller1"
+author: "Alex R.G"
+date: "24/3/2022"
+output: pdf_document
+
+---
+
+```{r}
+setwd("E:/Semestre 8/Estadística industrial/Taller 1")
+```
+
+# Punto (1)
+
+```{r}
+# Lectura de datos punto 1.
+d1 <- read.csv(file.choose(), header = T, sep = " ")
+```
+
+## (a)
+
+```{r}
+f_datos <- rbind(d1$X1,d1$X2,d1$X3,d1$X4)
+hist(f_datos,main="Histograma del peso neto de un blanqueador",xlab = "Peso neto", prob = T)
+```
+Se observa simetría en la distribución de los datos, siendo esto un indicio de que el supuesto de normalidad se cumple.
+
+Ahora, se realiza un gráfico de probabilidad normal para seguir investigando el cumplimiento de la normalidad de los datos
+
+```{r}
+qqnorm(f_datos)
+qqline(f_datos,col="red",lwd=2)
+```
+En el gráfico anterior se observa que la mayoría de los datos están sobre la linea teórica de normalidad y las colas no se separan mucho de esta. Por lo tanto, hay evidencia a favor de la normalidad de los datos. A continuación se realiza una prueba de Shapiro-Wilks para verificar el supuesto de normalidad.
+
+Se tiene el siguiente juego de hipótesis:
+
+$$H_0: PesoNeto \sim N(\mu,\sigma^2) \ \ vs \ \ H_1: PesoNeto \nsim N(\mu,\sigma^2)$$
+```{r}
+# Prueba de Shapiro-Wilks
+shapiro.test(f_datos)
+```
+
+El test da un $P_{value} = 0.4686$, es decir, a un nivel de significancia del 0.05 no hay información suficiente para rechazar el supuesto de normalidad de los datos. Lo anterior aunado a lo que se concluyó con el qqplot indica que el peso neto (en onzas) del producto blanqueador cumple el supuesto de normalidad. 
+
+
+## (b)
+
+```{r}
+library(qcc)
+```
+
+```{r}
+datos <- as.data.frame(cbind("Muestra"=rep(1:25,each=4),"pesoN"=as.vector(apply(d1, 1, t))))
+rm(list=c("d1"))
+```
+
+```{r}
+attach(datos)
+pesoNeto <- qcc.groups(pesoN, Muestra)
+qcc(pesoNeto, type="xbar",title="",xlab="Muestra", ylab="Media")
+qcc(pesoNeto, type="R",title="",xlab="Muestra", ylab="Rango")
+```
+!!(Revisar posibles patrones)
+
+En la gráfica de control para la media se observa que existen 2 muestras fuera de los limites de control: La muestra 9 esta por debajo del limite inferior y la muestra 23 esta por encima del limite superior. Por lo anterior el proceso no se encuentra en control, por lo que se procede a eliminar estos datos del análisis.
+
+```{r}
+pesoNeto_control <- pesoNeto[-c(9,23),]
+qcc(pesoNeto_control, type="xbar",title="",xlab="Muestra", ylab="Media")
+qcc(pesoNeto_control, type="R",title="",xlab="Muestra", ylab="Rango")
+```
+!!!(Revisar posibles patrones en los gráficos)
+
+Después de eliminar las muestras 9 y 23 la gráfica de control para la media muestra que todas las medias están dentro de los limites. Además, la gráfica de control para $R$ tampoco presenta valores por fuera de los limites. Por lo anterior, ahora el proceso se encuentra en control.
+
+## (c)
+
+```{r}
+mean(apply(pesoNeto_control, 1, mean)) # Aplicar la media a cada fila (muestra) 
+rangos <- apply(pesoNeto_control,1,range) 
+mean(rangos[2,]-rangos[1,])/2.059
+```
+
+Para este caso $n=4$, por lo tanto la constante usada para calcular $\hat{\sigma} = \frac{\bar{R}}{d_2}$ es $d_2 = 2.059$. Por tanto, la media del proceso es 15.97283 y la desviación estándar del mismo es 0.499187.
+
+## (d)
+
+```{r}
+lel <- 16-.75
+uel <- 16+.75
+x_bar <- mean(apply(pesoNeto_control, 1, mean)) # Media del proceso
+sigma <- mean(rangos[2,]-rangos[1,])/2.059 # Desv. Estándar del proceso
+no_defectuosos <- pnorm(uel,mean=x_bar,sd=sigma)-pnorm(lel,mean=x_bar,sd=sigma)
+(1-no_defectuosos)*100
+```
+En el proceso se esta generando un $13.36\%$ de artículos que no cumplen con las especificaciones dadas.
+
+## (e)
+
+Preguntar en la asesoria (1/(1-\%no_defectuosos))
+
+Una posible solución para este punto es:
+
+Los limites de control se están calculando a $\pm 3\sigma s$, por lo tanto esto corresponde a la probabilidad de dos colas igual a 0.0027 bajo una distribución normal estándar. Entonces, como el proceso está en control, para encontrar el promedio de muestras que se deben inspeccionar hasta encontrar una fuera de control se calcula el $ARL_0 = \frac{1}{\alpha}$ con $\alpha = 0.0027$, es decir, $ARL_0 = 370.37$ muestras a tomar para detectar una fuera de control.
+
+## (f)
+
+Como la media se desplazó, entonces el proceso está ahora fuera de control.
+
+Para encontrar la probabilidad de detectar el cambio de la media en la primera muestra se calcula el valor de $\beta$ así:
+
+```{r}
+beta <- pnorm(16.72161,mean=16.2,sd=sigma/sqrt(4))-pnorm(15.22405,mean=16.2,sd=sigma/sqrt(4))
+1-beta # Prob. de detectar el cambio en la muestra 1
+```
+La probabilidad de detectar el cambio en la media en la primera muestra es del $1.83\%$.
+(¿Se puede poner alguna interpretación?)
+
+## (g)
+
+Para calcular este número esperado de muestras se tiene en cuenta que el proceso está fuera de control, por lo 
+tanto se usa el $ARL_1 = \frac{1}{1-\beta}$.
+
+```{r}
+1/(1-beta)
+```
+El número de muestras esperado que se deben inspeccionar hasta detectar el cambio mencionado anteriormente es de 54.45942 muestras. 
+
+(¿Se puede hacer alguna interpretación?)
+
+## (h)
+
+```{r}
+beta <- oc.curves.xbar(qcc(pesoNeto_control, type="xbar",title="",xlab="Muestra", ylab="Media", plot = FALSE), n = c(5,10,15,20),c = seq(0,3,0.05))
+```
+Se observa que con un tamaño de muestra $n = 5$, las probabilidades de no detectar el cambio en la media, en base al cambio en la desviación estándar, son más altas con respecto a los demás tamaños de muestra, seguido por el tamaño de muestra de 10, 15 y 20. También para un cambio aproximadamente por encima de 2 desviaciones estándar en la media, la probabilidad de no detectar este en el proceso en la primera muestra para los tamaños de muestra iguales a 10, 15 y 20 tiende a ser cero y por encima de 2.5 desviaciones estándar, para todos los tamaños de muestra la probabilidad de no detectar el cambio en la primera muestra tiende a ser cero.
+
+(¿Pueden haber otras conclusiones?)
+
+
+# Punto #2.
+
+## a) 
+
+```{r}
+# Lectura de datos punto 2.
+d2 <- read.csv(file.choose(), header = T, sep = " ")
+```
+
+# Verificación de la normalidad de los datos:
+
+```{r}
+f_datos2 <- rbind(d2$X1,d2$X2,d2$X3,d2$X4,d2$X5,d2$X6,d2$X7,d2$X8,d2$X9)
+hist(f_datos2,main="Histograma del volumen de llenado",xlab = "Volumen de llenado", prob = T)
+```
+```{r}
+qqnorm(f_datos2)
+qqline(f_datos2,col="red",lwd=2)
+```
+!! Explicación.
+
+$$H_0: VolLlen \sim N(\mu,\sigma^2) \ \ vs \ \ H_1: VolLlen \nsim N(\mu,\sigma^2)$$
+
+```{r}
+shapiro.test(f_datos2)
+```
+
+Con una significancia del 0.05 se concluye que el volumen de llenado del refresco sigue una distribución normal, ya que en la prueba de Shapiro-Wilks no se rechaza la hipótesis de normalidad lo cual concuerda con lo visto en los gráficos exploratorios de normalidad. 
+
+## b) 
+
+```{r}
+datos2 <- as.data.frame(cbind("Muestra"=rep(1:25,each=9),"Vol"=as.vector(apply(d2, 1, t))))
+rm(list=c("d2"))
+```
+
+```{r}
+Vol <- qcc.groups(datos2$Vol, datos2$Muestra)
+qcc(Vol, type="xbar",title="",xlab="Muestra", ylab="Media")
+qcc(Vol, type="S",title="",xlab="Muestra", ylab="Desviación estándar")
+```
+
+En la gráfica de control para $\bar{x}$ se observa que la muestra 20 la media se sale del limite superior de control a $3\sigma$, por lo tanto se procede a recalcular los límites de control sin esta muestra. 
+
+```{r}
+Vol_control <- Vol[-c(20),]
+qcc(Vol_control, type="xbar",title="",xlab="Muestra", ylab="Media")
+qcc(Vol_control, type="S",title="",xlab="Muestra", ylab="Desviación estándar")
+```
+
+Luego de eliminar la muestra 20 se tiene un proceso en control, donde ninguno de los puntos sobrepasan los limites de control a $3\sigma$.
+
+## c) 
+
+```{r}
+xbarra <- mean(apply(Vol_control,1,mean))
+dstd <- mean(apply(Vol_control,1,sd))/0.9693
+
+xbarra
+dstd
+
+mean(apply(Vol,1,var))
+```
+
+
+## d)
+
+
+```{r}
+# Calculo del cpk
+cpk <- min((xbarra-(-0.05))/(3*dstd), (0.5-xbarra)/(3*dstd))
+cpk
+```
+```{r}
+# Calculo
+ci_cpk <- function(n,cpk,alpha){
+  LI <- cpk*(1-qnorm(1-(alpha/2))*sqrt(1/(9*n*(cpk^2))+1/(2*(n-1))))
+  LS <- cpk*(1+qnorm(1-(alpha/2))*sqrt(1/(9*n*(cpk^2))+1/(2*(n-1))))
+  return(paste0("[",LI,",",LS,"]"))
+}
+
+ci_cpk(n=9,cpk = cpk ,alpha=0.05)
+```
+
+## e)
+
+```{r}
+qcc(Vol_control, type="xbar",title="",xlab="Muestra", ylab="Media",nsigmas = 2)
+qcc(Vol_control, type="S",title="",xlab="Muestra", ylab="Desviación estándar", nsigmas = 2)
+```
+
+```{r}
+qcc(Vol_control, type="xbar",title="",xlab="Muestra", ylab="Media",nsigmas = 2)
+qcc(Vol_control, type="S",title="",xlab="Muestra", ylab="Desviación estándar",nsigmas = 2)
+```
+# Posible solución:
+
+Los limites de control se están calculando a $\pm 2\sigma s$, por lo tanto esto corresponde a la probabilidad de dos colas igual a 0.046 bajo una distribución normal estándar. Entonces, como el proceso está en control, para encontrar el promedio de muestras que se deben inspeccionar hasta encontrar una fuera de control se calcula el $ARL_0 = \frac{1}{\alpha}$ con $\alpha = 0.046$, es decir, $ARL_0 = 40$ muestras a tomar para detectar una fuera de control.
+
+## f)
+
+```{r}
+d2f <- read.csv(file.choose(), header = F, sep = " ")
+datos2f <- as.data.frame(cbind("Muestra"=rep(1:15,each=9),"Vol"=as.vector(apply(d2f[,-1], 1, t))))
+```
+
+```{r}
+qcc(Vol_control, type="xbar",title="",xlab="Muestra", ylab="Media",newdata = d2f[,-1],nsigmas = 2)
+qcc(Vol_control, type="S",title="",xlab="Muestra", ylab="Desviación estándar",newdata = d2f[,-1],nsigmas = 3)
+```
+
+En ambos gráficos de control no existen muestras fuera de control, sin embargo en el gráfico para la media se observa que para las 15 nuevas muestras hay un desplazamiento hacia arriba de la media  
+
+
+
+
+# 6)
+
+Dado que los límites de control iniciales para la media son $$\bar{\bar{X}}\pm 3*(\frac{\sigma^2}{n})^{1/2}$$
+
+Cuando $\sigma^2$ es desconocido, esta se puede aproximar por medio de:
+
+$$\bar{S^2} = \frac{\sum_{i = 1}^{m} S^2_i}{m}$$
+
+Los límites de control para $S^2$ no se puede calcular directamente en términos de un múltiplo de la desviación estándar de éste estadístico, debido a que su distribución ($\chi^2$) no es simétrica. Pero, se pueden calcular los limites de control probabilisticos para $S^2$ teniendo en cuenta que:
+
+
+$$1 -\alpha = P(\chi^2_{1-\frac{\alpha}{2},n-1} \leq \frac{(n-1)S^2}{\sigma^2}) \leq \chi^2_{\frac{\alpha}{2},n-1}) \\ = P(\frac{\sigma^2\chi^2_{1-\frac{\alpha}{2},n-1}}{n-1} \leq S^2 \leq \frac{\sigma^2\chi^2_{\frac{\alpha}{2},n-1}}{n-1}) $$
+
+Por lo tanto, utilizando la estimación $\sigma^2 = \bar{S^2}$ se definen los limites de control y el valor central para el gráfico de control de $S^2$
+
+$$UCL = \frac{\bar{S^2}\chi^2_{\frac{\alpha}{2},n-1}}{n-1}$$
+$$CL = \bar{S^2}$$
+
+$$LCL = \frac{\bar{S^2}\chi^2_{1-\frac{\alpha}{2},n-1}}{n-1}$$
+Ahora para obtener los limites de control probabilísticos para $S$ se saca raíz cuadrada a los limites obtenidos para $S^2$.
+
+```{r}
+# Grafico para S
+
+CL <- mean(apply(Vol,1,var))
+UCL <- sqrt((CL*(qchisq(0.05/2,9-1,lower.tail = F)))/(9-1))
+LCL <- sqrt(((CL*(qchisq(0.05/2,9-1)))/(9-1)))
+UCL
+CL
+LCL
+```
+
+```{r}
+# Gráfica para Xbarra
+
+CLXbar <- mean(apply(Vol,1,mean)) 
+UCLxbar <- CLXbar + 1.032*sqrt(CL)
+LCLXbar <- CLXbar - 1.032*sqrt(CL)
+UCLxbar
+CLXbar
+LCLXbar
+
+```
+
+
+```{r}
+qcc(Vol, type="xbar",title="",xlab="Muestra", ylab="Media", limits = c(-1.048349,1.112171))
+qcc(Vol, type="S",title="",xlab="Muestra", ylab="Desviación estándar",limits = c(0.298545,2.401604))
+```
+Se observa que se sale el dato de la media para la muestra 20 del limite de control superior. Por tanto, se quita este valor y se recalculan los límites.
+
+
+```{r}
+# Grafico para S sin obs. 20
+
+CL <- mean(apply(Vol_control,1,var))
+UCL <- sqrt((CL*(qchisq(0.05/2,9-1,lower.tail = F)))/(9-1))
+LCL <- sqrt(((CL*(qchisq(0.05/2,9-1)))/(9-1)))
+UCL
+CL
+LCL
+```
+
+
+```{r}
+# Gráfica para Xbarra sin obs 20
+
+CLXbar <- mean(apply(Vol_control,1,mean)) 
+UCLxbar <- CLXbar + 1.032*sqrt(CL)
+LCLXbar <- CLXbar - 1.032*sqrt(CL)
+UCLxbar
+CLXbar
+LCLXbar
+
+```
+
+```{r}
+qcc(Vol_control, type="xbar",title="",xlab="Muestra", ylab="Media", limits = c(-1.112269,1.070972))
+qcc(Vol_control, type="S",title="",xlab="Muestra", ylab="Desviación estándar",limits = c(0.5521391,1.566009))
+```
+```{r}
+Vol_control2 <- Vol[-c(7,22,20), ]
+```
+
+```{r}
+# Grafico para S sin obs. 7,20 y 22
+
+CL <- mean(apply(Vol_control2,1,var))
+UCL <- sqrt((CL*(qchisq(0.05/2,9-1,lower.tail = F)))/(9-1))
+LCL <- sqrt(((CL*(qchisq(0.05/2,9-1)))/(9-1)))
+UCL
+CL
+LCL
+```
+
+```{r}
+# Gráfica para Xbarra sin obs 7,20 y 22
+
+CLXbar <- mean(apply(Vol_control2,1,mean)) 
+UCLxbar <- CLXbar + 1.032*sqrt(CL)
+LCLXbar <- CLXbar - 1.032*sqrt(CL)
+UCLxbar
+CLXbar
+LCLXbar
+
+```
+
+
+```{r}
+qcc(Vol_control2, type="xbar",title="",xlab="Muestra", ylab="Media", limits = c(-1.141438,1.0077))
+qcc(Vol_control2, type="S",title="",xlab="Muestra", ylab="Desviación estándar",limits = c(0.5435143,1.541547))
+```
+
+Se observa una diferencia importante con los limites probabilísticos para S, debido a que con estos se detectaron como puntos fuera de control a los relacionados con la muestra 7, 20 y 22 (La 20 se detectó en el gráfico de $\bar{X}$ y la 7 y 22 en el gráfico de $S$) y en cambio con los limites de control para S, calculados como múltiplos de su desviación estándar, solo se observó que el promedio para la muestra 20 sobresalió del límite superior de control para $\bar{X}$. Se concluye que los límites probabilisticos para S fueron más angostos y dejaron más puntos por fuera de ellos.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

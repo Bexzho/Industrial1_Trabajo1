@@ -437,7 +437,68 @@ Se observa una diferencia importante con los limites probabilísticos para S, de
 
 
 
+# Punto 5
+En una fábrica de producción de crema dental, se tomaron medidas del peso (en gramos) de una referencia en particular. Cada medida representa el peso en gramos de cada tubo después de salir del proceso de llenado. Las medidas fueron tomadas por una balanza automatizada que se encuentra justo después del proceso de llenado. Los datos son los siguientes:
 
+```{r}
+datos5 <- c(2.07, 2.17, 2.17, 2.07, 2.12, 2.05, 2.10, 2.07, 2.10, 2.14, 2.12, 2.05, 2.07, 2.12, 2.16, 2.17, 2.14, 2.01, 2.02, 2.10, 2.12, 2.13, 2.16, 2.09, 2.15)
+```
+
+## a)
+
+Realice una prueba de bondad de ajuste a la distribución normal para los datos
+¿qué puede concluir?
+
+```{r}
+hist(datos5,main="Histograma del peso de la referencia de crema dental",xlab = "Peso", prob = T)
+```
+No se observa simetría aparente en la distribución de los datos, dando indicios de que el supuesto de normalidad no se cumple.
+
+Se realiza un gráfico de probabilidad normal para tener más elementos gráficos que den cuenta  del cumplimiento de la normalidad de los datos:
+
+```{r}
+qqnorm(datos5$Peso)
+qqline(datos5$Peso,col="red",lwd=2)
+```
+Se observa que los datos están alrededor de la linea teórica de normalidad, aunque no sobre ella y una de las colas se separa considerablemente de esta. No parece haber evidencia suficiente para concluir la normalidad de los datos, por lo que se realiza una prueba de Shapiro-Wilks y se verifica que, para:
+
+  $$H_0: Peso \sim N(\mu,\sigma^2) \ \ vs \ \ H_1: Peso\nsim N(\mu,\sigma^2)$$
+```{r}
+#Prueba de Shapiro-Wilks
+shapiro.test(datos5$Peso)
+```
+
+El test da un $P_{value} = 0.2264$, es decir, a un nivel de significancia del 0.05 no hay información suficiente para rechazar el supuesto de normalidad de los datos. A pesar de la información que se verificó en el histograma y en el diagrama de normalidad, se concluye que el peso de los tubos de crema dental de la referencia específica  cumple el supuesto de normalidad. 
+
+##b)
+
+Establecer los gráficos de control para medidas individuales y promedios móviles. ¿Está el proceso en control? (si es necesario calcule los límites de control revisados)
+
+library(qcc)
+#Medidas individuales
+
+```{r}
+x <- datos5 #c(33.75, 33.05, 34, 33.81, 33.46, 34.02, 33.68, 33.27, 33.49, 33.20,33.62, 33.00, 33.54, 33.12, 33.84)
+qcc(x, type="xbar.one",title="Gráfica de control para medidas individuales",xlab="Número del tubo",ylab="peso")
+x.mr<- matrix(cbind(x[1:length(x)-1], x[2:length(x)]), ncol=2)
+qcc(x.mr, type="R",title="Gráfica de control para rango móvil",xlab="Número de tubo",ylab="Rango móvil" )
+
+```
+
+Se nota un cierto patrón entre el 8 y el 18 (se ve más claro) ¿qué razón sería suficiente para recalcular los límites de control revisados?
+
+##c)
+Después de establecer las cartas de control del inciso a), se tomaron 15 nuevas muestras y el peso se muestra en la tabla que se presenta a continuación. Incluya esta información en los gráficos de control y concluya.
+
+```{r}
+xnew<- c(2.11, 2.11, 2.05, 2.11, 2.17, 2.11, 2.07, 2.16, 2.01, 2.35, 2.08, 2.08, 2.12, 2.03, 2.14)
+qcc(x, type="xbar.one",newdata=xnew,title="Gráfica de control para medidas individuales",xlab="Número del tubo",ylab="peso")
+xnew1<-c(x[15],xnew)
+xnew.mr<- matrix(cbind(xnew1[1:length(xnew1)-1], xnew1[2:length(xnew1)]), ncol=2)
+qcc(x.mr, type="R",newdata=xnew.mr,title="Gráfica de control para rango móvil",xlab="Número del tubo",ylab="Rango móvil" )
+
+```
+Con los nuevos pesos incluidos, se evidencia que dos de éstos tienen un peso por encima de los límites
 
 
 
